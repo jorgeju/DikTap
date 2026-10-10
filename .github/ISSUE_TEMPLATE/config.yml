@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability / Vulnerabilidad de seguridad
+    url: https://github.com/jorgeju/DikTap/security/advisories/new
+    about: Report privately, not in a public issue. / Informa en privado, no en un issue público.

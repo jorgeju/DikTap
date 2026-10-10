@@ -1,0 +1,22 @@
+# Build and compilation outputs
+[Bb]in/
+[Oo]bj/
+artifacts/
+[Tt]est[Rr]esults/
+
+# Visual Studio & VS Code
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Local runtime data, logs and temporary files
+*.log
+*.tmp
+
+# OS generated files
+[Tt]humbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/

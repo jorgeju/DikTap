@@ -1,0 +1,58 @@
+name: Release
+
+# Runs only when a vX.Y.Z tag is pushed; only users with write access can create it.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Check that the tag matches the version
+        shell: pwsh
+        run: |
+          [xml]$props = Get-Content Directory.Build.props
+          $version = $props.Project.PropertyGroup.Version
+          if ("v$version" -ne $env:GITHUB_REF_NAME) {
+            throw "Tag $env:GITHUB_REF_NAME does not match Version=$version in Directory.Build.props"
+          }
+          "VERSION=$version" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Build and run tests
+        shell: pwsh
+        run: ./scripts/Build.ps1
+
+      - name: Publish and package
+        shell: pwsh
+        run: ./scripts/Publish.ps1 -Package
+
+      - name: Create the release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $zip = "artifacts/package/DikTap-$env:VERSION-win-x64.zip"
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          $notes = @"
+          **Install:** download the ZIP, extract it and run ``DikTap.exe`` (see the [README](https://github.com/$env:GITHUB_REPOSITORY#installation)).
+          **Instalación:** descarga el ZIP, descomprímelo y ejecuta ``DikTap.exe`` ([README en español](https://github.com/$env:GITHUB_REPOSITORY/blob/main/README.es.md#instalación)).
+
+          SHA-256 (``DikTap-$env:VERSION-win-x64.zip``): ``$hash``
+
+          ---
+          "@
+          $flags = @()
+          if ($env:VERSION -match '-') { $flags += '--prerelease' }
+          gh release create $env:GITHUB_REF_NAME $zip "$zip.sha256" --title "DikTap $env:VERSION" --notes $notes --generate-notes @flags

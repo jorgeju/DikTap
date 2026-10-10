@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.9.0.schema.json
+PackageIdentifier: jorgeju.DikTap
+PackageVersion: {{VERSION}}
+InstallerType: zip
+NestedInstallerType: portable
+NestedInstallerFiles:
+  - RelativeFilePath: DikTap.exe
+    PortableCommandAlias: diktap
+MinimumOSVersion: 10.0.22000.0
+UpgradeBehavior: install
+ReleaseDate: {{DATE}}
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/jorgeju/DikTap/releases/download/v{{VERSION}}/DikTap-{{VERSION}}-win-x64.zip
+    InstallerSha256: {{SHA256}}
+ManifestType: installer
+ManifestVersion: 1.9.0

@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DikTap/DikTap.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DikTap.LiveCheck/DikTap.LiveCheck.csproj" />
+    <Project Path="tests/DikTap.Tests/DikTap.Tests.csproj" />
+  </Folder>
+</Solution>

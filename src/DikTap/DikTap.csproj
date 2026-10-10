@@ -1,0 +1,60 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>DikTap</AssemblyName>
+    <RootNamespace>DikTap</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
+    <SatelliteResourceLanguages>es;en</SatelliteResourceLanguages>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <Description>Dictado global para Windows</Description>
+    <!-- Lightweight resident process: no background GC thread and no runtime telemetry/EventSource. -->
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <TieredPGO>false</TieredPGO>
+    <EventSourceSupport>false</EventSourceSupport>
+    <MetricsSupport>false</MetricsSupport>
+    <!-- The UI is bilingual (es/en) with its own texts (Localization/Str.cs); the Windows language is read with a native call, not ICU. -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- WPF creates cultures from the keyboard language (e.g. es-ES): without this, invariant mode would throw CultureNotFoundException. -->
+    <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
+    <!-- Native Windows thread pool instead of the managed one: 4 fewer threads measured at idle. -->
+    <UseWindowsThreadPool>true</UseWindowsThreadPool>
+    <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="DikTap.Tests" />
+    <InternalsVisibleTo Include="DikTap.LiveCheck" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(TrayIconMonochrome)' == 'true'">
+    <DefineConstants>$(DefineConstants);TRAY_MONOCHROME</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\app.ico" />
+    <EmbeddedResource Include="Assets\tray-light.ico" />
+    <EmbeddedResource Include="Assets\tray-dark.ico" />
+    <EmbeddedResource Include="Assets\tray-color-dark.ico" />
+  </ItemGroup>
+
+  <!--
+    ReadyToRun only for DikTap.dll (enabled with -p:PublishReadyToRun=true, see scripts/Publish.ps1).
+    The runtime is already precompiled; precompiling WPF and the rest added 16 MB to the EXE and 5 MB of private memory with no clear gain.
+    With only our own code: startup 500-700 ms -> 165-315 ms, private memory -0.3 MB, EXE +0.3 MB.
+  -->
+  <PropertyGroup>
+    <PublishReadyToRunComposite>false</PublishReadyToRunComposite>
+  </PropertyGroup>
+  <Target Name="ExcludeFrameworkFromReadyToRun" BeforeTargets="PrepareReadyToRunFiles;_PrepareForReadyToRunCompilation" Condition="'$(PublishReadyToRun)' == 'true'">
+    <ItemGroup>
+      <PublishReadyToRunExclude Include="@(ResolvedFileToPublish->'%(Filename)%(Extension)')" Exclude="DikTap.dll" />
+    </ItemGroup>
+  </Target>
+
+</Project>

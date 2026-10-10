@@ -1,0 +1,44 @@
+name: Bug report / Informar de un error
+description: Something is not working as it should / Algo no funciona como debería
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **Do not paste your API key** or private text. For security issues use the [private report form](https://github.com/jorgeju/DikTap/security/advisories/new).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened / Qué ha pasado
+      description: And what you expected to happen. / Y qué esperabas que pasara.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce / Pasos para reproducirlo
+      placeholder: "1. Cursor in Notepad\n2. Win+H, speak\n3. ..."
+  - type: input
+    id: version
+    attributes:
+      label: DikTap version / Versión de DikTap
+      description: Shown next to the name in the Settings window. / Aparece junto al nombre en la ventana de Configuración.
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version / Versión de Windows
+      placeholder: "Windows 11 24H2"
+  - type: input
+    id: app
+    attributes:
+      label: App you were dictating into / Programa donde dictabas
+      placeholder: "Chrome, VS Code, Word..."
+  - type: textarea
+    id: log
+    attributes:
+      label: Log (optional) / Registro (opcional)
+      description: The last lines of `%LOCALAPPDATA%\DikTap\logs\app.log`. It contains no keys or dictated text.
+      render: text

@@ -1,0 +1,24 @@
+name: Feature request / Sugerir una mejora
+description: An idea for DikTap / Una idea para DikTap
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        DikTap aims to be **light and fast, with few options**. All ideas are welcome, even heavy ones, but not all will be included if they do not fit that focus.
+        DikTap busca ser **ligero y rápido, con pocas opciones**. Todas las ideas son bienvenidas, también las pesadas, pero no todas se incluirán si no encajan con ese enfoque.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What do you need / Qué necesitas
+      description: Describe the problem, not only the solution. / Describe el problema, no solo la solución.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How would you picture it / Cómo lo imaginas
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you tried / Alternativas que has probado
