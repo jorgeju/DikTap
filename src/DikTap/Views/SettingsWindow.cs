@@ -9,6 +9,7 @@ using DikTap.Services.Hotkeys;
 using DikTap.Services.Settings;
 using DikTap.Services.Startup;
 using DikTap.Services.Uninstall;
+using DikTap.Services.Update;
 using DikTap.Services.Usage;
 
 namespace DikTap.Views;
@@ -27,6 +28,9 @@ internal interface ISettingsHost
     HotkeyApplyResult Apply(AppSettings settings, bool startWithWindows);
     // Removes the key and startup entry and closes the application; a helper process deletes the rest on exit. Returns an error or null.
     string? Uninstall(bool keepSettings);
+    Task<UpdateCheckResult> CheckForUpdatesAsync(CancellationToken ct);
+    Task<StagedUpdate> DownloadUpdateAsync(UpdateCheckResult update, IProgress<double>? progress, CancellationToken ct);
+    void ApplyUpdateAndRestart(StagedUpdate update);
 }
 
 // Settings window created on open and released on close; nothing is left rendering in the background.
@@ -67,6 +71,10 @@ internal sealed class SettingsWindow : Window
     private readonly Button _uninstall = new();
     private readonly Button _save = new();
     private readonly Button _close = new();
+    private readonly Button _btnCheckUpdates = new();
+    private readonly Button _btnApplyUpdate = new();
+    private readonly TextBlock _updateStatus = new();
+    private UpdateCheckResult? _availableUpdate;
     private IReadOnlyList<AudioDeviceInfo> _devices = Array.Empty<AudioDeviceInfo>();
     private StartupState _initialStartup;
 
@@ -98,6 +106,9 @@ internal sealed class SettingsWindow : Window
             UpdateKeyVisibility();
         };
 
+        _btnCheckUpdates.Click += async (_, _) => await CheckForUpdatesAsync();
+        _btnApplyUpdate.Click += async (_, _) => await ApplyUpdateAsync();
+
         _uninstall.Click += (_, _) => Uninstall();
         _save.Click += (_, _) => SaveAll();
         _close.Click += (_, _) => Close();
@@ -114,7 +125,8 @@ internal sealed class SettingsWindow : Window
             _mic, _mode, _hotkeyStatus, _languages, _keywords, _context,
             _clipRestore, _clipKeep, _clipKeepHistory,
             _language, _startup, _startupNote, _message,
-            _uninstall, _save, _close
+            _uninstall, _save, _close,
+            _btnCheckUpdates, _btnApplyUpdate, _updateStatus
         };
 
     private UIElement BuildContent()
@@ -340,7 +352,7 @@ internal sealed class SettingsWindow : Window
     private static TextBlock Label(string text) => new() { Text = text, Margin = new Thickness(0, 6, 0, 2), FontSize = 12, Foreground = ModernTheme.Palette.TextSecondary };
     private static TextBlock Note(string text) => new() { Text = text, TextWrapping = TextWrapping.Wrap, Foreground = ModernTheme.Palette.TextMuted, FontSize = 11, Margin = new Thickness(0, 4, 0, 0) };
 
-    private static UIElement BuildWelcomeCard()
+    private UIElement BuildWelcomeCard()
     {
         var grid = new Grid();
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -393,6 +405,28 @@ internal sealed class SettingsWindow : Window
         shortcuts.Children.Add(CreateShortcutBadge("Win+H", Str.ShortcutDictate));
         shortcuts.Children.Add(CreateShortcutBadge("Esc", Str.BtnCancel));
         textPanel.Children.Add(shortcuts);
+
+        var updateRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 5, 0, 0) };
+        _btnCheckUpdates.Content = Str.BtnCheckUpdates;
+        _btnCheckUpdates.FontSize = 11;
+        _btnCheckUpdates.Padding = new Thickness(8, 2, 8, 2);
+
+        _btnApplyUpdate.Content = Str.BtnInstallUpdate;
+        _btnApplyUpdate.FontSize = 11;
+        _btnApplyUpdate.Padding = new Thickness(10, 2, 10, 2);
+        _btnApplyUpdate.Margin = new Thickness(8, 0, 0, 0);
+        _btnApplyUpdate.Visibility = _availableUpdate is not null ? Visibility.Visible : Visibility.Collapsed;
+        ModernTheme.MakePrimary(_btnApplyUpdate);
+
+        _updateStatus.FontSize = 11;
+        _updateStatus.VerticalAlignment = VerticalAlignment.Center;
+        _updateStatus.Margin = new Thickness(8, 0, 0, 0);
+        _updateStatus.TextWrapping = TextWrapping.Wrap;
+
+        updateRow.Children.Add(_btnCheckUpdates);
+        updateRow.Children.Add(_btnApplyUpdate);
+        updateRow.Children.Add(_updateStatus);
+        textPanel.Children.Add(updateRow);
 
         var links = new WrapPanel { Margin = new Thickness(0, 6, 0, 0) };
         links.Children.Add(AboutLink(Str.LinkRepository, AppInfo.RepositoryUrl));
@@ -648,6 +682,74 @@ internal sealed class SettingsWindow : Window
         Title = Str.SettingsTitle;
         Content = BuildContent();
         _ = LoadAsync();
+    }
+
+    private async Task CheckForUpdatesAsync()
+    {
+        if (_host is null) return;
+        _btnCheckUpdates.IsEnabled = false;
+        _btnApplyUpdate.Visibility = Visibility.Collapsed;
+        _updateStatus.Text = Str.CheckingUpdates;
+        _updateStatus.Foreground = ModernTheme.Palette.TextMuted;
+
+        try
+        {
+            var result = await _host.CheckForUpdatesAsync(CancellationToken.None);
+            if (result.HasUpdate && result.LatestVersion is not null)
+            {
+                _availableUpdate = result;
+                _updateStatus.Text = Str.UpdateAvailable(result.LatestVersion);
+                _updateStatus.Foreground = ModernTheme.Palette.Accent;
+                _btnApplyUpdate.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                _availableUpdate = null;
+                _updateStatus.Text = Str.AlreadyLatestVersion;
+                _updateStatus.Foreground = ModernTheme.Palette.SuccessText;
+            }
+        }
+        catch (Exception ex)
+        {
+            _availableUpdate = null;
+            Logger.Error("Update check failed", ex);
+            _updateStatus.Text = ex is DictationException de ? de.Message : Str.UpdateCheckFailed;
+            _updateStatus.Foreground = ModernTheme.Palette.DangerText;
+        }
+        finally
+        {
+            _btnCheckUpdates.IsEnabled = true;
+        }
+    }
+
+    private async Task ApplyUpdateAsync()
+    {
+        if (_host is null || _availableUpdate is null) return;
+        _btnCheckUpdates.IsEnabled = false;
+        _btnApplyUpdate.IsEnabled = false;
+        _updateStatus.Foreground = ModernTheme.Palette.TextPrimary;
+
+        try
+        {
+            _updateStatus.Text = Str.DownloadingUpdate;
+            var progress = new Progress<double>(p =>
+            {
+                int percent = (int)Math.Clamp(p * 100, 0, 100);
+                _updateStatus.Text = Str.DownloadingUpdatePercent(percent);
+            });
+
+            var staged = await _host.DownloadUpdateAsync(_availableUpdate, progress, CancellationToken.None);
+            _updateStatus.Text = Str.InstallingUpdate;
+            _host.ApplyUpdateAndRestart(staged);
+        }
+        catch (Exception ex)
+        {
+            Logger.Error("Update download or installation failed", ex);
+            _updateStatus.Text = ex is DictationException de ? de.Message : ex.Message;
+            _updateStatus.Foreground = ModernTheme.Palette.DangerText;
+            _btnCheckUpdates.IsEnabled = true;
+            _btnApplyUpdate.IsEnabled = true;
+        }
     }
 
     private void Uninstall()

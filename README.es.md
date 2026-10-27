@@ -13,6 +13,7 @@ aparece donde tenías el cursor: el chat, el editor, el navegador... Usa la API 
 - **Seguro al pegar:** solo pega si sigues en la misma ventana; si no, deja el texto en el portapapeles y te avisa. No envía Enter.
 - **Ligero:** vive en la bandeja del sistema, ~10 MB de memoria privada y 0 % de CPU en reposo.
 - **Portable y sin instalación:** un único `DikTap.exe` (incluye .NET). Interfaz en español e inglés.
+- **Actualización automática:** busca e instala nuevas versiones con un solo clic directamente desde Configuración (con verificación de integridad SHA-256 y reinicio automático).
 - **Privado:** sin telemetría; no guarda audio ni textos. Tu clave se guarda en el Administrador de credenciales de Windows.
 - **Estadísticas de uso y coste estimado** (en local) para saber cuánto gastas en OpenAI.
 
@@ -57,7 +58,7 @@ Doble clic en el icono de la bandeja (o abrir de nuevo el EXE) abre la Configura
 | Idiomas, vocabulario y contexto | Pistas opcionales para mejorar el reconocimiento (nombres propios, jerga técnica...). |
 | Portapapeles tras pegar | Restaurar lo que tenías (por defecto), dejar el dictado o dejarlo también en el historial `Win+V`. |
 | Estadísticas de uso | Dictados, minutos y coste estimado por periodo y por clave. Los datos solo se guardan en tu equipo. |
-| Idioma | Automático (el de Windows), español o inglés. |
+| Idioma y actualizaciones | Automático (el de Windows), español o inglés; búsqueda e instalación de actualizaciones desde GitHub. |
 
 ## Privacidad
 
