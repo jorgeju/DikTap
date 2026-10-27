@@ -149,6 +149,7 @@ internal static class Str
     public static string UpdateHashMismatch => P("La comprobación de integridad (SHA-256) falló. Actualización cancelada.", "Integrity check (SHA-256) failed. Update cancelled.");
     public static string UpdateInvalidPackage => P("El paquete descargado no contiene un ejecutable válido.", "The downloaded package does not contain a valid executable.");
     public static string UpdateLaunchFailed => P("No se pudo iniciar el proceso de actualización.", "Could not launch the update process.");
+    public static string UpdateCancelled => P("Actualización cancelada.", "Update cancelled.");
     public static string UpdateRateLimited => P("Límite de peticiones de GitHub excedido; inténtalo más tarde.", "GitHub API rate limit exceeded; please try again later.");
     public static string UpdateCheckFailed => P("No se pudo comprobar si hay actualizaciones.", "Could not check for updates.");
     public static string AppUpdated(string version) => P($"DikTap se ha actualizado a la versión {version}", $"DikTap was updated to version {version}");
