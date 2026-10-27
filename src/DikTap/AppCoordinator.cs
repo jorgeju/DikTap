@@ -7,6 +7,7 @@ using DikTap.Services.Settings;
 using DikTap.Services.Startup;
 using DikTap.Services.Transcription;
 using DikTap.Services.Uninstall;
+using DikTap.Services.Update;
 using DikTap.Services.Usage;
 using DikTap.Views;
 
@@ -26,6 +27,7 @@ internal sealed class AppCoordinator : ISettingsHost, IDisposable
     private readonly OverlayPresenter _overlay;
     private readonly IPasteService _paste;
     private readonly DictationController _controller;
+    private readonly IUpdateService _updateService = new UpdateService();
     private readonly TrayIcon _tray;
 
     private AppSettings _settings;
@@ -73,13 +75,18 @@ internal sealed class AppCoordinator : ISettingsHost, IDisposable
         _tray = new TrayIcon(_host, BuildMenu, ShowSettings);
     }
 
-    public void Start()
+    public void Start(bool updated = false)
     {
         _hotkey = _hotkeys.Apply(_settings.HotkeyMode);
         if (_hotkey.Warning is { } w) _overlay.ShowError(w);
         UpdateTooltip();
         Logger.Info($"Ready (shortcut={_hotkey.ActiveMode}, backup={_hotkey.BackupRegistered}, active={_hotkey.IsActive})");
         WarmUp();
+
+        if (updated)
+        {
+            _overlay.ShowInfo(Str.AppUpdated(AppInfo.Version));
+        }
 
         if (_settings.StartWithWindows && _startup.GetState() == StartupState.NotRegistered)
         {
@@ -228,6 +235,22 @@ internal sealed class AppCoordinator : ISettingsHost, IDisposable
         };
         Exit();
         return null;
+    }
+
+    public Task<UpdateCheckResult> CheckForUpdatesAsync(CancellationToken ct)
+        => _updateService.CheckForUpdatesAsync(ct);
+
+    public Task<StagedUpdate> DownloadUpdateAsync(UpdateCheckResult update, IProgress<double>? progress, CancellationToken ct)
+        => _updateService.DownloadAndPrepareAsync(update, progress, ct);
+
+    public void ApplyUpdateAndRestart(StagedUpdate update)
+    {
+        string currentExe = Environment.ProcessPath ?? string.Empty;
+        if (!_updateService.LaunchUpdater(currentExe, update.StagedExe, update.StagingDir))
+            throw new DictationException(Str.UpdateLaunchFailed, ErrorKind.Generic);
+
+        _afterExit = null;
+        Exit();
     }
 
     public HotkeyApplyResult Apply(AppSettings settings, bool startWithWindows)

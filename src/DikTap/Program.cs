@@ -17,6 +17,7 @@ internal static class Program
         }
 
         bool background = args.Contains("--background", StringComparer.OrdinalIgnoreCase);
+        bool updated = args.Contains("--updated", StringComparer.OrdinalIgnoreCase);
 
         AppDomain.CurrentDomain.UnhandledException += (_, e) => Logger.Error("Fatal exception", e.ExceptionObject as Exception);
         TaskScheduler.UnobservedTaskException += (_, e) =>
@@ -40,7 +41,7 @@ internal static class Program
 
         try
         {
-            return Run(exe);
+            return Run(exe, updated);
         }
         catch (Exception ex)
         {
@@ -59,7 +60,7 @@ internal static class Program
         catch (AbandonedMutexException) { return true; }
     }
 
-    private static int Run(string exe)
+    private static int Run(string exe, bool updated)
     {
         var dispatcher = System.Windows.Threading.Dispatcher.CurrentDispatcher;
         dispatcher.UnhandledException += (_, e) =>
@@ -73,7 +74,7 @@ internal static class Program
         var registration = ThreadPool.RegisterWaitForSingleObject(showSettings,
             (_, _) => dispatcher.InvokeAsync(coordinator.ShowSettingsFromAnotherInstance), null, Timeout.Infinite, false);
 
-        coordinator.Start();
+        coordinator.Start(updated);
         // Only the Dispatcher message loop (WindowsBase): full WPF is loaded only when Settings opens.
         System.Windows.Threading.Dispatcher.Run();
 

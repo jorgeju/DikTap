@@ -135,6 +135,21 @@ internal static class Str
     public static string LinkRequestFeature => P("Sugerir una mejora", "Request a feature");
     public static string LinkLicense => P("Licencia GPL-3.0", "GPL-3.0 license");
     public static string AboutLicenseNote => P("Software libre (GPL-3.0), sin garantía", "Free software (GPL-3.0), no warranty");
+    public static string BtnCheckUpdates => P("Buscar actualizaciones", "Check for updates");
+    public static string CheckingUpdates => P("Buscando actualizaciones…", "Checking for updates…");
+    public static string AlreadyLatestVersion => P("Tienes la versión más reciente.", "You have the latest version.");
+    public static string UpdateAvailable(string version) => P($"Nueva versión disponible: v{version}", $"New version available: v{version}");
+    public static string BtnInstallUpdate => P("Actualizar y reiniciar", "Update and restart");
+    public static string DownloadingUpdate => P("Descargando…", "Downloading…");
+    public static string DownloadingUpdatePercent(int percent) => P($"Descargando… {percent}%", $"Downloading… {percent}%");
+    public static string VerifyingUpdate => P("Verificando firma SHA-256…", "Verifying SHA-256…");
+    public static string InstallingUpdate => P("Instalando y reiniciando…", "Installing and restarting…");
+    public static string UpdateHashMismatch => P("La comprobación de integridad (SHA-256) falló. Actualización cancelada.", "Integrity check (SHA-256) failed. Update cancelled.");
+    public static string UpdateInvalidPackage => P("El paquete descargado no contiene un ejecutable válido.", "The downloaded package does not contain a valid executable.");
+    public static string UpdateLaunchFailed => P("No se pudo iniciar el proceso de actualización.", "Could not launch the update process.");
+    public static string UpdateRateLimited => P("Límite de peticiones de GitHub excedido; inténtalo más tarde.", "GitHub API rate limit exceeded; please try again later.");
+    public static string UpdateCheckFailed => P("No se pudo comprobar si hay actualizaciones.", "Could not check for updates.");
+    public static string AppUpdated(string version) => P($"DikTap se ha actualizado a la versión {version}", $"DikTap was updated to version {version}");
     public static string FirstUse => P(
         "Primer uso: introduce tu API key de OpenAI para empezar. Tras guardar, la aplicación queda en la bandeja del sistema.",
         "First use: enter your OpenAI API key to get started. After saving, the application stays in the system tray.");

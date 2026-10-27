@@ -12,6 +12,7 @@ your cursor was: chat, editor, browser... It uses OpenAI's transcription API (`g
 - **Safe pasting:** it only pastes if you are still in the same window; otherwise the text stays in the clipboard and you are notified. It never presses Enter.
 - **Lightweight:** lives in the system tray, ~10 MB private memory and 0 % CPU when idle.
 - **Portable, no installer:** a single `DikTap.exe` (.NET included). Spanish and English interface.
+- **Automatic updates:** check for and install new versions with one click directly from Settings (with SHA-256 integrity verification and automatic restart).
 - **Private:** no telemetry; audio and transcripts are never stored. Your key is kept in Windows Credential Manager.
 - **Local usage and estimated cost statistics** to see what you spend on OpenAI.
 
@@ -56,7 +57,7 @@ Double-click the tray icon (or launch the EXE again) to open Settings.
 | Languages, vocabulary and context | Optional hints to improve recognition (proper names, jargon...). |
 | Clipboard after pasting | Restore what you had (default), keep the dictation, or keep it in the `Win+V` history too. |
 | Usage statistics | Dictations, minutes and estimated cost by period and by key. Data stays on your computer. |
-| Language | Automatic (Windows language), Spanish or English. |
+| Language and updates | Automatic (Windows language), Spanish or English; check for and install updates from GitHub. |
 
 ## Privacy
 
