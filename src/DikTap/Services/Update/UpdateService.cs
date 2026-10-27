@@ -208,22 +208,48 @@ internal sealed class UpdateService : IUpdateService
         return $"for /l %n in (1,1,60) do @if exist {target} (del /f /q {target} >nul 2>&1 & ping -n 2 127.0.0.1 >nul) else (copy /y {source} {target} >nul 2>&1 & (if exist \"{stageDir}\\VERSION.txt\" copy /y \"{stageDir}\\VERSION.txt\" \"{targetDir}\\VERSION.txt\" >nul 2>&1) & rd /s /q {netExtract} >nul 2>&1 & start \"\" {target} --updated & rd /s /q {temp} >nul 2>&1 & exit)";
     }
 
+    internal static bool RequiresElevation(string targetExe)
+    {
+        try
+        {
+            string dir = Path.GetDirectoryName(targetExe) ?? string.Empty;
+            if (!Directory.Exists(dir)) return true;
+            string testFile = Path.Combine(dir, "DikTap-UacTest-" + Guid.NewGuid().ToString("N") + ".tmp");
+            using (var fs = new FileStream(testFile, FileMode.CreateNew, FileAccess.Write, FileShare.None, 1, FileOptions.DeleteOnClose))
+            {
+            }
+            return false;
+        }
+        catch
+        {
+            return true;
+        }
+    }
+
     public bool LaunchUpdater(string targetExe, string stagedExe, string stagingDir)
     {
         string? command = BuildUpdateCommand(targetExe, stagedExe, stagingDir);
         if (command is null) return false;
+
+        bool elevate = RequiresElevation(targetExe);
+        var psi = new ProcessStartInfo
+        {
+            FileName = Path.Combine(Environment.SystemDirectory, "cmd.exe"),
+            Arguments = $"/d /s /c \"{command}\"",
+            UseShellExecute = true,
+            WindowStyle = ProcessWindowStyle.Hidden,
+        };
+        if (elevate) psi.Verb = "runas";
+
         try
         {
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = Path.Combine(Environment.SystemDirectory, "cmd.exe"),
-                Arguments = $"/d /s /c \"{command}\"",
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                WindowStyle = ProcessWindowStyle.Hidden,
-                WorkingDirectory = Environment.SystemDirectory,
-            })?.Dispose();
-            return true;
+            using var proc = Process.Start(psi);
+            return proc is not null;
+        }
+        catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)
+        {
+            Logger.Info("Update cancelled by user at UAC prompt");
+            throw new DictationException(Str.UpdateCancelled, ErrorKind.Generic);
         }
         catch (Exception ex)
         {

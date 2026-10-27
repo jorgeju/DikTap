@@ -134,6 +134,16 @@ public class UpdateServiceTests
     }
 
     [Fact]
+    public void RequiresElevation_detects_writable_and_non_writable_locations()
+    {
+        string userPath = Path.Combine(Path.GetTempPath(), "test.exe");
+        Assert.False(UpdateService.RequiresElevation(userPath));
+
+        string progFilesPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "DikTap", "DikTap.exe");
+        Assert.True(UpdateService.RequiresElevation(progFilesPath));
+    }
+
+    [Fact]
     public async Task DownloadAndPrepareAsync_verifies_hash_and_extracts_executable()
     {
         // Create in-memory zip with dummy DikTap.exe (> 1MB)
@@ -219,5 +229,27 @@ public class UpdateServiceTests
         );
 
         await Assert.ThrowsAsync<DictationException>(() => service.DownloadAndPrepareAsync(updateInfo));
+    }
+
+    [Fact]
+    public async Task Live_download_and_verify_against_real_github_release()
+    {
+        var service = new UpdateService();
+        var check = await service.CheckForUpdatesAsync();
+        Assert.NotNull(check.LatestVersion);
+        Assert.NotNull(check.ZipDownloadUrl);
+        Assert.NotNull(check.Sha256DownloadUrl);
+
+        var staged = await service.DownloadAndPrepareAsync(check);
+        try
+        {
+            Assert.True(File.Exists(staged.StagedExe));
+            Assert.True(new FileInfo(staged.StagedExe).Length > 100_000_000);
+            Assert.True(Directory.Exists(staged.StagingDir));
+        }
+        finally
+        {
+            try { Directory.Delete(staged.StagingDir, true); } catch { }
+        }
     }
 }
