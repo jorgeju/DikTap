@@ -423,15 +423,14 @@ internal sealed class SettingsWindow : Window
         _btnApplyUpdate.Visibility = _availableUpdate is not null ? Visibility.Visible : Visibility.Collapsed;
         ModernTheme.MakePrimary(_btnApplyUpdate);
 
-        _updateStatus.FontSize = 11;
-        _updateStatus.VerticalAlignment = VerticalAlignment.Center;
-        _updateStatus.Margin = new Thickness(8, 0, 0, 0);
-        _updateStatus.TextWrapping = TextWrapping.Wrap;
-
         updateRow.Children.Add(_btnCheckUpdates);
         updateRow.Children.Add(_btnApplyUpdate);
-        updateRow.Children.Add(_updateStatus);
         textPanel.Children.Add(updateRow);
+
+        _updateStatus.FontSize = 11;
+        _updateStatus.Margin = new Thickness(0, 4, 0, 0);
+        _updateStatus.TextWrapping = TextWrapping.Wrap;
+        textPanel.Children.Add(_updateStatus);
 
         var links = new WrapPanel { Margin = new Thickness(0, 6, 0, 0) };
         links.Children.Add(AboutLink(Str.LinkRepository, AppInfo.RepositoryUrl));
@@ -697,6 +696,7 @@ internal sealed class SettingsWindow : Window
         _btnCheckUpdates.IsEnabled = false;
         _btnApplyUpdate.Visibility = Visibility.Collapsed;
         _updateStatus.Text = Str.CheckingUpdates;
+        _updateStatus.ToolTip = _updateStatus.Text;
         _updateStatus.Foreground = ModernTheme.Palette.TextMuted;
 
         try
@@ -706,6 +706,7 @@ internal sealed class SettingsWindow : Window
             {
                 _availableUpdate = result;
                 _updateStatus.Text = Str.UpdateAvailable(result.LatestVersion);
+                _updateStatus.ToolTip = _updateStatus.Text;
                 _updateStatus.Foreground = ModernTheme.Palette.Accent;
                 _btnApplyUpdate.Visibility = Visibility.Visible;
             }
@@ -713,6 +714,7 @@ internal sealed class SettingsWindow : Window
             {
                 _availableUpdate = null;
                 _updateStatus.Text = Str.AlreadyLatestVersion;
+                _updateStatus.ToolTip = _updateStatus.Text;
                 _updateStatus.Foreground = ModernTheme.Palette.SuccessText;
             }
         }
@@ -721,6 +723,7 @@ internal sealed class SettingsWindow : Window
             _availableUpdate = null;
             Logger.Error("Update check failed", ex);
             _updateStatus.Text = ex is DictationException de ? de.Message : Str.UpdateCheckFailed;
+            _updateStatus.ToolTip = _updateStatus.Text;
             _updateStatus.Foreground = ModernTheme.Palette.DangerText;
         }
         finally
@@ -739,20 +742,24 @@ internal sealed class SettingsWindow : Window
         try
         {
             _updateStatus.Text = Str.DownloadingUpdate;
+            _updateStatus.ToolTip = _updateStatus.Text;
             var progress = new Progress<double>(p =>
             {
                 int percent = (int)Math.Clamp(p * 100, 0, 100);
                 _updateStatus.Text = Str.DownloadingUpdatePercent(percent);
+                _updateStatus.ToolTip = _updateStatus.Text;
             });
 
             var staged = await _host.DownloadUpdateAsync(_availableUpdate, progress, CancellationToken.None);
             _updateStatus.Text = Str.InstallingUpdate;
+            _updateStatus.ToolTip = _updateStatus.Text;
             _host.ApplyUpdateAndRestart(staged);
         }
         catch (Exception ex)
         {
             Logger.Error("Update download or installation failed", ex);
             _updateStatus.Text = ex is DictationException de ? de.Message : ex.Message;
+            _updateStatus.ToolTip = _updateStatus.Text;
             _updateStatus.Foreground = ModernTheme.Palette.DangerText;
             _btnCheckUpdates.IsEnabled = true;
             _btnApplyUpdate.IsEnabled = true;
