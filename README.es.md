@@ -9,8 +9,9 @@ aparece donde tenías el cursor: el chat, el editor, el navegador... Usa la API 
 ## Características
 
 - **Un atajo en todas partes:** `Win+H` (sustituye al dictado de Windows mientras DikTap está abierto) o `Ctrl+Alt+Espacio`. `Esc` cancela.
+- **Copiar último dictado:** pulsa `Ctrl+Alt+C` o haz un clic en el icono de la bandeja en cualquier momento para volver a copiar el último texto transcrito al portapapeles.
 - **Indicador minimalista** con una onda de audio que reacciona a tu voz, para saber que el micrófono te oye.
-- **Seguro al pegar:** solo pega si sigues en la misma ventana; si no, deja el texto en el portapapeles y te avisa. No envía Enter.
+- **Seguro al pegar:** valida la ventana destino y el control enfocado (incluso dentro de VS Code, Chrome, Electron y WPF); si el foco cambia, el texto queda seguro en el portapapeles y te avisa. No envía Enter.
 - **Ligero:** vive en la bandeja del sistema, ~10 MB de memoria privada y 0 % de CPU en reposo.
 - **Portable y sin instalación:** un único `DikTap.exe` (incluye .NET). Interfaz en español e inglés.
 - **Actualización automática:** busca e instala nuevas versiones con un solo clic directamente desde Configuración (con verificación de integridad SHA-256 y reinicio automático).
@@ -47,6 +48,7 @@ winget install jorgeju.DikTap
 2. Habla mientras la onda se mueve. Pulsa `Win+H` de nuevo para terminar.
 3. El texto se transcribe y se pega. `Esc` cancela en cualquier momento.
 
+Pulsa `Ctrl+Alt+C` (o haz un clic en el icono de la bandeja) en cualquier momento para volver a copiar tu último dictado al portapapeles.
 Doble clic en el icono de la bandeja (o abrir de nuevo el EXE) abre la Configuración.
 
 ## Configuración
@@ -58,7 +60,7 @@ Doble clic en el icono de la bandeja (o abrir de nuevo el EXE) abre la Configura
 | Idiomas, vocabulario y contexto | Pistas opcionales para mejorar el reconocimiento (nombres propios, jerga técnica...). |
 | Portapapeles tras pegar | Restaurar lo que tenías (por defecto), dejar el dictado o dejarlo también en el historial `Win+V`. |
 | Estadísticas de uso | Dictados, minutos y coste estimado por periodo y por clave. Los datos solo se guardan en tu equipo. |
-| Idioma y actualizaciones | Automático (el de Windows), español o inglés; búsqueda e instalación de actualizaciones desde GitHub. |
+| Idioma, actualizaciones y opciones | Automático (el de Windows), español o inglés; búsqueda e instalación de actualizaciones desde GitHub, activar/desactivar copia con un clic e inicio automático. |
 
 ## Privacidad
 

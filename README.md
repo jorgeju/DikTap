@@ -8,8 +8,9 @@ your cursor was: chat, editor, browser... It uses OpenAI's transcription API (`g
 ## Features
 
 - **One shortcut everywhere:** `Win+H` (replaces Windows dictation while DikTap is running) or `Ctrl+Alt+Space`. `Esc` cancels.
+- **Copy last dictation:** press `Ctrl+Alt+C` or single-click the tray icon at any time to re-copy your last transcribed text to the clipboard.
 - **Minimal indicator** with an audio waveform that reacts to your voice, so you know the microphone is hearing you.
-- **Safe pasting:** it only pastes if you are still in the same window; otherwise the text stays in the clipboard and you are notified. It never presses Enter.
+- **Safe pasting:** validates the target window and focused control (including inside VS Code, Chrome, Electron and WPF); if focus moves away, the text stays safely in the clipboard and you are notified. It never presses Enter.
 - **Lightweight:** lives in the system tray, ~10 MB private memory and 0 % CPU when idle.
 - **Portable, no installer:** a single `DikTap.exe` (.NET included). Spanish and English interface.
 - **Automatic updates:** check for and install new versions with one click directly from Settings (with SHA-256 integrity verification and automatic restart).
@@ -46,6 +47,7 @@ winget install jorgeju.DikTap
 2. Speak while the waveform moves. Press `Win+H` again to finish.
 3. The text is transcribed and pasted. `Esc` cancels at any time.
 
+Press `Ctrl+Alt+C` (or left-click the tray icon) at any time to re-copy your last dictation to the clipboard.
 Double-click the tray icon (or launch the EXE again) to open Settings.
 
 ## Settings
@@ -57,7 +59,7 @@ Double-click the tray icon (or launch the EXE again) to open Settings.
 | Languages, vocabulary and context | Optional hints to improve recognition (proper names, jargon...). |
 | Clipboard after pasting | Restore what you had (default), keep the dictation, or keep it in the `Win+V` history too. |
 | Usage statistics | Dictations, minutes and estimated cost by period and by key. Data stays on your computer. |
-| Language and updates | Automatic (Windows language), Spanish or English; check for and install updates from GitHub. |
+| Language, updates and options | Automatic (Windows language), Spanish or English; check for updates from GitHub, toggle single-click tray copy and startup. |
 
 ## Privacy
 

@@ -17,16 +17,19 @@ internal sealed class HotkeyManager : IEscapeKey, IDisposable
 {
     private const int ToggleId = 0x4401;
     private const int EscapeId = 0x4402;
+    private const int CopyLastId = 0x4403;
     private const int ERROR_HOTKEY_ALREADY_REGISTERED = 1409;
 
     private readonly HostWindow _host;
     private IToggleHotkey? _hook;
     private bool _toggleRegistered;
+    private bool _copyLastRegistered;
     private bool _escapeArmed;
     private bool _healing;
 
     public event Action? TogglePressed;
     public event Action? EscapePressed;
+    public event Action? CopyLastPressed;
     // User notices (e.g. the hook could not be recovered).
     public event Action<string>? Notice;
 
@@ -40,6 +43,7 @@ internal sealed class HotkeyManager : IEscapeKey, IDisposable
     {
         if (id == ToggleId) TogglePressed?.Invoke();
         else if (id == EscapeId) EscapePressed?.Invoke();
+        else if (id == CopyLastId) CopyLastPressed?.Invoke();
     }
 
     public HotkeyApplyResult Apply(HotkeyMode mode)
@@ -58,6 +62,7 @@ internal sealed class HotkeyManager : IEscapeKey, IDisposable
                 _toggleRegistered = NativeMethods.RegisterHotKey(_host.Handle, ToggleId,
                     NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT | NativeMethods.MOD_NOREPEAT, NativeMethods.VK_SPACE);
                 Logger.Info($"Shortcut active: Win+H (low-level keyboard hook); Ctrl+Alt+Space fallback: {(_toggleRegistered ? "yes" : "no")}");
+                EnsureCopyLastRegistered();
                 return new HotkeyApplyResult(HotkeyMode.WinH, _toggleRegistered, true, null);
             }
             catch (Exception ex) when (ex is Win32Exception or InvalidOperationException or ThreadStartException)
@@ -69,6 +74,7 @@ internal sealed class HotkeyManager : IEscapeKey, IDisposable
 
         _toggleRegistered = NativeMethods.RegisterHotKey(_host.Handle, ToggleId,
             NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT | NativeMethods.MOD_NOREPEAT, NativeMethods.VK_SPACE);
+        EnsureCopyLastRegistered();
         if (_toggleRegistered)
         {
             Logger.Info("Shortcut active: Ctrl+Alt+Space");
@@ -113,6 +119,17 @@ internal sealed class HotkeyManager : IEscapeKey, IDisposable
         }
     }
 
+    private void EnsureCopyLastRegistered()
+    {
+        if (_copyLastRegistered) return;
+        _copyLastRegistered = NativeMethods.RegisterHotKey(_host.Handle, CopyLastId,
+            NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT | NativeMethods.MOD_NOREPEAT, NativeMethods.VK_C);
+        if (_copyLastRegistered)
+            Logger.Info("Copy last shortcut active: Ctrl+Alt+C");
+        else
+            Logger.Info($"Could not register Ctrl+Alt+C (error {Marshal.GetLastWin32Error()})");
+    }
+
     private void Release()
     {
         if (_hook is WinHKeyboardHook h)
@@ -143,6 +160,11 @@ internal sealed class HotkeyManager : IEscapeKey, IDisposable
     public void Dispose()
     {
         Disarm();
+        if (_copyLastRegistered)
+        {
+            NativeMethods.UnregisterHotKey(_host.Handle, CopyLastId);
+            _copyLastRegistered = false;
+        }
         Release();
         _host.HotkeyPressed -= OnHotkey;
     }

@@ -25,6 +25,7 @@ internal sealed class AppCoordinator : ISettingsHost, IDisposable
     private readonly HostWindow _host = new();
     private readonly HotkeyManager _hotkeys;
     private readonly OverlayPresenter _overlay;
+    private readonly IDestinationService _destination = new Win32DestinationService();
     private readonly IPasteService _paste;
     private readonly DictationController _controller;
     private readonly IUpdateService _updateService = new UpdateService();
@@ -44,14 +45,14 @@ internal sealed class AppCoordinator : ISettingsHost, IDisposable
         Loc.Configure(_settings.Language);
         _overlay = new OverlayPresenter(_dispatcher);
         _hotkeys = new HotkeyManager(_host);
-        _paste = new PasteService(new Win32Clipboard(() => _host.Handle), new SendInputKeyboardInjector(), new Win32DestinationService());
+        _paste = new PasteService(new Win32Clipboard(() => _host.Handle), new SendInputKeyboardInjector(), _destination);
 
         var http = new Lazy<System.Net.Http.HttpClient>(OpenAITranscriptionClient.CreateHttpClient);
         _controller = new DictationController(
             _recorder,
             new OpenAITranscriptionClient(() => http.Value),
             _paste,
-            new Win32DestinationService(),
+            _destination,
             _credentials,
             _overlay,
             _hotkeys,
@@ -60,6 +61,7 @@ internal sealed class AppCoordinator : ISettingsHost, IDisposable
 
         _hotkeys.TogglePressed += _controller.Toggle;
         _hotkeys.EscapePressed += () => _controller.Cancel(CancelReason.User);
+        _hotkeys.CopyLastPressed += CopyLast;
         _host.SessionLocked += () => _controller.Cancel(CancelReason.SessionInterrupted);
         _host.Suspending += () => _controller.Cancel(CancelReason.SessionInterrupted);
         _host.CloseRequested += Exit;
@@ -72,7 +74,7 @@ internal sealed class AppCoordinator : ISettingsHost, IDisposable
         };
         _host.SessionEnding += () => _controller.Cancel(CancelReason.Shutdown);
 
-        _tray = new TrayIcon(_host, BuildMenu, ShowSettings);
+        _tray = new TrayIcon(_host, BuildMenu, ShowSettings, onSingleClick: OnTraySingleClick);
     }
 
     public void Start(bool updated = false)
@@ -107,6 +109,7 @@ internal sealed class AppCoordinator : ISettingsHost, IDisposable
     private void WarmUp()
     {
         _overlay.WarmUp();
+        _destination.WarmUp();
         // Loads the COM audio stack (without opening the microphone) so the first capture is as fast as the rest.
         _ = Task.Run(async () =>
         {
@@ -163,9 +166,18 @@ internal sealed class AppCoordinator : ISettingsHost, IDisposable
     // Invoked from another instance (second launch) through the named event.
     public void ShowSettingsFromAnotherInstance() => OnUi(ShowSettings);
 
+    private void OnTraySingleClick()
+    {
+        if (_settings.SingleClickCopiesLast) CopyLast();
+    }
+
     private async void CopyLast()
     {
-        if (_controller.LastDictation is not { } text) return;
+        if (_controller.LastDictation is not { } text)
+        {
+            _overlay.ShowInfo(Str.NoLastDictation);
+            return;
+        }
         bool ok = await _paste.CopyTextAsync(text);
         if (ok) _overlay.ShowInfo(Str.LastCopied);
         else _overlay.ShowError(Str.ClipboardBusyRetry);

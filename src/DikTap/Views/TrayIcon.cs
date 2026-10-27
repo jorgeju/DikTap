@@ -19,15 +19,18 @@ internal sealed class TrayIcon : IDisposable
     private readonly HostWindow _host;
     private readonly Func<IReadOnlyList<TrayMenuItem>> _menu;
     private readonly Action _open;
+    private readonly Action? _singleClick;
+    private CancellationTokenSource? _clickCts;
     private IntPtr _icon;
     private bool _added;
     private string _tooltip = AppInfo.Name;
 
-    public TrayIcon(HostWindow host, Func<IReadOnlyList<TrayMenuItem>> menuProvider, Action onOpen)
+    public TrayIcon(HostWindow host, Func<IReadOnlyList<TrayMenuItem>> menuProvider, Action onOpen, Action? onSingleClick = null)
     {
         _host = host;
         _menu = menuProvider;
         _open = onOpen;
+        _singleClick = onSingleClick;
         _icon = LoadTrayIcon();
         _host.TrayMessage += OnTrayMessage;
         _host.TaskbarCreated += Add;
@@ -155,14 +158,44 @@ internal sealed class TrayIcon : IDisposable
     {
         switch (mouseMessage)
         {
+            case NativeMethods.WM_LBUTTONUP:
+                HandleLeftClick();
+                break;
             case NativeMethods.WM_LBUTTONDBLCLK:
-                _open();
+                HandleDoubleClick();
                 break;
             case NativeMethods.WM_RBUTTONUP:
             case NativeMethods.WM_CONTEXTMENU:
+                _clickCts?.Cancel();
+                _clickCts = null;
                 ShowMenu();
                 break;
         }
+    }
+
+    private async void HandleLeftClick()
+    {
+        if (_singleClick is null) return;
+        _clickCts?.Cancel();
+        var cts = _clickCts = new CancellationTokenSource();
+        try
+        {
+            uint dblTime = NativeMethods.GetDoubleClickTime();
+            if (dblTime == 0) dblTime = 500;
+            await Task.Delay((int)dblTime, cts.Token).ConfigureAwait(true);
+            if (!cts.IsCancellationRequested)
+            {
+                _singleClick();
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private void HandleDoubleClick()
+    {
+        _clickCts?.Cancel();
+        _clickCts = null;
+        _open();
     }
 
     private void ShowMenu()
@@ -198,6 +231,9 @@ internal sealed class TrayIcon : IDisposable
 
     public void Dispose()
     {
+        _clickCts?.Cancel();
+        _clickCts?.Dispose();
+        _clickCts = null;
         _host.TrayMessage -= OnTrayMessage;
         _host.TaskbarCreated -= Add;
         _host.SettingChanged -= OnSettingChanged;
