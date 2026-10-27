@@ -41,6 +41,7 @@ internal sealed record AppSettings
     public ClipboardMode ClipboardMode { get; init; } = ClipboardMode.Restore;
     public UiLanguage Language { get; init; } = UiLanguage.Auto;
     public bool StartWithWindows { get; init; } = true;
+    public bool SingleClickCopiesLast { get; init; } = true;
     public bool FirstRunCompleted { get; init; }
 }
 

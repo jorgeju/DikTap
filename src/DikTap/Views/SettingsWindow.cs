@@ -67,6 +67,7 @@ internal sealed class SettingsWindow : Window
     private readonly ComboBox _language = new() { MinWidth = 300 };
     private readonly CheckBox _startup = new();
     private readonly TextBlock _startupNote = new() { TextWrapping = TextWrapping.Wrap, Foreground = System.Windows.Media.Brushes.DimGray, FontSize = 11 };
+    private readonly CheckBox _singleClickCopy = new();
     private readonly TextBlock _message = new() { TextWrapping = TextWrapping.Wrap };
     private readonly Button _uninstall = new();
     private readonly Button _save = new();
@@ -124,7 +125,7 @@ internal sealed class SettingsWindow : Window
             _keyCard, _firstRunBanner, _firstRunText, _keyStatus, _keyBox, _saveKey, _delKey, _changeKey, _cancelEditKey,
             _mic, _mode, _hotkeyStatus, _languages, _keywords, _context,
             _clipRestore, _clipKeep, _clipKeepHistory,
-            _language, _startup, _startupNote, _message,
+            _language, _startup, _startupNote, _singleClickCopy, _message,
             _uninstall, _save, _close,
             _btnCheckUpdates, _btnApplyUpdate, _updateStatus
         };
@@ -147,6 +148,7 @@ internal sealed class SettingsWindow : Window
         _language.Items.Clear();
         _mic.Items.Clear();
         _startup.Content = Str.ChkStartup;
+        _singleClickCopy.Content = Str.ChkSingleClickCopy;
         _clipRestore.Content = new TextBlock { Text = Str.ClipRestore, TextWrapping = TextWrapping.Wrap };
         _clipKeep.Content = new TextBlock { Text = Str.ClipKeep, TextWrapping = TextWrapping.Wrap };
         _clipKeepHistory.Content = new TextBlock { Text = Str.ClipKeepHistory, TextWrapping = TextWrapping.Wrap };
@@ -278,6 +280,8 @@ internal sealed class SettingsWindow : Window
         _startup.Margin = new Thickness(0, 12, 0, 0);
         optionsPanel.Children.Add(_startup);
         optionsPanel.Children.Add(_startupNote);
+        _singleClickCopy.Margin = new Thickness(0, 8, 0, 0);
+        optionsPanel.Children.Add(_singleClickCopy);
         cardsPanel.Children.Add(ModernTheme.CreateCard(optionsPanel));
 
         var scrollViewer = new ScrollViewer
@@ -403,6 +407,7 @@ internal sealed class SettingsWindow : Window
 
         var shortcuts = new WrapPanel();
         shortcuts.Children.Add(CreateShortcutBadge("Win+H", Str.ShortcutDictate));
+        shortcuts.Children.Add(CreateShortcutBadge("Ctrl+Alt+C", Str.ShortcutCopyLast));
         shortcuts.Children.Add(CreateShortcutBadge("Esc", Str.BtnCancel));
         textPanel.Children.Add(shortcuts);
 
@@ -521,6 +526,7 @@ internal sealed class SettingsWindow : Window
 
         _initialStartup = _host.StartupState;
         _startup.IsChecked = _initialStartup == StartupState.DisabledByWindows ? false : s.StartWithWindows;
+        _singleClickCopy.IsChecked = s.SingleClickCopiesLast;
         _startupNote.Text = _initialStartup switch
         {
             StartupState.DisabledByWindows => Str.StartupDisabledByWindows,
@@ -655,6 +661,7 @@ internal sealed class SettingsWindow : Window
                 Context = _context.Text.Trim(),
                 ClipboardMode = clipMode,
                 StartWithWindows = _startup.IsChecked == true,
+                SingleClickCopiesLast = _singleClickCopy.IsChecked == true,
                 Language = _language.SelectedIndex is >= 0 and <= 2 ? (UiLanguage)_language.SelectedIndex : UiLanguage.Auto,
             };
             bool languageChanged = updated.Language != _host.Settings.Language;

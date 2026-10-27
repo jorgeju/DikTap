@@ -9,7 +9,7 @@ internal static class Str
     // ---- Tray and application ----
     public static string TrayShortcut(string description, bool active) => P($"Atajo: {(active ? description : "inactivo")}", $"Shortcut: {(active ? description : "inactive")}");
     public static string TraySettings => P("Configuración…", "Settings…");
-    public static string TrayCopyLast => P("Copiar último dictado", "Copy last dictation");
+    public static string TrayCopyLast => P("Copiar último dictado (Ctrl+Alt+C)", "Copy last dictation (Ctrl+Alt+C)");
     public static string TrayStartup => P("Iniciar con Windows", "Start with Windows");
     public static string TrayExit => P("Salir", "Exit");
     public static string TipReady(string description) => P($"listo ({description})", $"ready ({description})");
@@ -17,6 +17,7 @@ internal static class Str
     public static string TipTranscribing => P("transcribiendo", "transcribing");
     public static string TipWorking => P("trabajando", "working");
     public static string LastCopied => P("Último dictado copiado al portapapeles", "Last dictation copied to the clipboard");
+    public static string NoLastDictation => P("No hay ningún dictado previo para copiar", "No previous dictation to copy");
     public static string ClipboardBusyRetry => P("El portapapeles está ocupado; inténtalo de nuevo.", "The clipboard is busy; try again.");
     public static string StartupToggleFailed => P("No se pudo cambiar el inicio automático.", "Could not change automatic startup.");
     public static string UninstallPathUnsafe => P(
@@ -129,6 +130,7 @@ internal static class Str
         "Dictado por voz para cualquier aplicación de Windows.",
         "Voice dictation for any Windows application.");
     public static string ShortcutDictate => P("Empezar / parar", "Start / stop");
+    public static string ShortcutCopyLast => P("Copiar último", "Copy last");
     public static string AboutVersion(string version) => P($"Versión {version}", $"Version {version}");
     public static string LinkRepository => P("Repositorio", "Repository");
     public static string LinkReportBug => P("Informar de un error", "Report a bug");
@@ -196,6 +198,9 @@ internal static class Str
     public static string LanguageSpanish => "Español";
     public static string LanguageEnglish => "English";
     public static string ChkStartup => TrayStartup;
+    public static string ChkSingleClickCopy => P(
+        "Clic izquierdo en la bandeja copia el último dictado",
+        "Left-clicking the tray icon copies the last dictation");
     public static string StartupDisabledByWindows => P(
         "Desactivado desde Aplicaciones de inicio de Windows. Marca la casilla y guarda para volver a activarlo.",
         "Disabled from Windows Startup apps. Check the box and save to enable it again.");

@@ -4,6 +4,7 @@ using DikTap;
 using DikTap.Interop;
 using DikTap.Services.Credentials;
 using DikTap.Services.Hotkeys;
+using DikTap.Services.Paste;
 using DikTap.Services.Settings;
 using DikTap.Services.Startup;
 
@@ -26,6 +27,7 @@ public class SettingsStoreTests : IDisposable
         Assert.Equal(HotkeyMode.WinH, s.HotkeyMode);
         Assert.Equal(ClipboardMode.Restore, s.ClipboardMode);
         Assert.True(s.StartWithWindows);
+        Assert.True(s.SingleClickCopiesLast);
         Assert.False(s.FirstRunCompleted);
         Assert.Null(s.MicrophoneId);
         Assert.Equal(string.Empty, s.Languages);
@@ -37,12 +39,13 @@ public class SettingsStoreTests : IDisposable
     public void Round_trip_preserves_values_and_never_contains_secrets()
     {
         var store = new JsonSettingsStore(File_);
-        var s = new AppSettings { HotkeyMode = HotkeyMode.WinH, MicrophoneId = "{0.0.1.00000000}.{abc}", Keywords = "a, b", ClipboardMode = ClipboardMode.KeepWithHistory, FirstRunCompleted = true };
+        var s = new AppSettings { HotkeyMode = HotkeyMode.WinH, MicrophoneId = "{0.0.1.00000000}.{abc}", Keywords = "a, b", ClipboardMode = ClipboardMode.KeepWithHistory, SingleClickCopiesLast = false, FirstRunCompleted = true };
         store.Save(s);
         Assert.Equal(s, store.Load());
         string json = System.IO.File.ReadAllText(File_);
         Assert.Contains("\"WinH\"", json);
         Assert.Contains("\"KeepWithHistory\"", json);
+        Assert.Contains("\"SingleClickCopiesLast\": false", json);
         Assert.DoesNotContain("sk-", json);
         Assert.Empty(Directory.GetFiles(_dir, "*.tmp"));
     }
@@ -345,5 +348,41 @@ public class WinHShortcutFilterTests
         Up(f, H);
         shift = false;                                      // Shift was released without the hook seeing the event
         Assert.True(Down(f, H).Toggle);
+    }
+}
+
+public class DestinationServiceTests
+{
+    [Fact]
+    public void Validate_detects_focus_changed_when_runtime_id_differs()
+    {
+        IntPtr hwnd = NativeMethods.GetForegroundWindow();
+        if (hwnd == IntPtr.Zero) return;
+        uint tid = NativeMethods.GetWindowThreadProcessId(hwnd, out uint pid);
+        if (pid == 0) return;
+
+        var snapshot = new DestinationSnapshot(hwnd, pid, tid, IntPtr.Zero, new[] { 42, 100, 1 });
+
+        var sameService = new Win32DestinationService(() => new[] { 42, 100, 1 });
+        Assert.Equal(DestinationStatus.Valid, sameService.Validate(snapshot));
+
+        var changedService = new Win32DestinationService(() => new[] { 42, 100, 2 });
+        Assert.Equal(DestinationStatus.FocusChanged, changedService.Validate(snapshot));
+
+        var nullService = new Win32DestinationService(() => null);
+        Assert.Equal(DestinationStatus.FocusChanged, nullService.Validate(snapshot));
+    }
+
+    [Fact]
+    public void Validate_falls_back_to_win32_focus_when_runtime_id_is_null()
+    {
+        IntPtr hwnd = NativeMethods.GetForegroundWindow();
+        if (hwnd == IntPtr.Zero) return;
+        uint tid = NativeMethods.GetWindowThreadProcessId(hwnd, out uint pid);
+        if (pid == 0) return;
+
+        var snapshot = new DestinationSnapshot(hwnd, pid, tid, IntPtr.Zero, FocusRuntimeId: null);
+        var service = new Win32DestinationService(() => new[] { 42, 999 });
+        Assert.Equal(DestinationStatus.Valid, service.Validate(snapshot));
     }
 }
