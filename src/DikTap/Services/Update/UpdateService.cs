@@ -93,6 +93,11 @@ internal sealed class UpdateService : IUpdateService
         }
         if ((int)response.StatusCode == 403 || (int)response.StatusCode == 429)
         {
+            if (_apiUrl == DefaultApiUrl)
+            {
+                Logger.Info("GitHub API rate limit hit; falling back to release web redirect");
+                return await CheckViaWebRedirectAsync(client, ct).ConfigureAwait(false);
+            }
             throw new DictationException(Str.UpdateRateLimited, ErrorKind.Network);
         }
         response.EnsureSuccessStatusCode();
@@ -124,6 +129,46 @@ internal sealed class UpdateService : IUpdateService
             ZipDownloadUrl: zipAsset?.BrowserDownloadUrl,
             ZipSize: zipAsset?.Size ?? 0,
             Sha256DownloadUrl: shaAsset?.BrowserDownloadUrl
+        );
+    }
+
+    private static async Task<UpdateCheckResult> CheckViaWebRedirectAsync(HttpClient client, CancellationToken ct)
+    {
+        string webUrl = $"{AppInfo.RepositoryUrl}/releases/latest";
+        using var request = new HttpRequestMessage(HttpMethod.Get, webUrl);
+        if (!request.Headers.Contains("User-Agent"))
+            request.Headers.Add("User-Agent", "DikTap");
+
+        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return new UpdateCheckResult(false, AppInfo.Version, null, null, null, null, 0, null);
+        }
+        response.EnsureSuccessStatusCode();
+
+        var finalUri = response.RequestMessage?.RequestUri;
+        if (finalUri is null || !finalUri.AbsoluteUri.Contains("/releases/tag/"))
+        {
+            return new UpdateCheckResult(false, AppInfo.Version, null, null, null, null, 0, null);
+        }
+
+        string latestTag = finalUri.Segments[^1].Trim('/');
+        string cleanVersion = latestTag.TrimStart('v', 'V');
+        bool hasUpdate = IsNewerVersion(latestTag, AppInfo.Version);
+
+        string zipName = $"DikTap-{cleanVersion}-win-x64.zip";
+        string zipUrl = $"{AppInfo.RepositoryUrl}/releases/download/{latestTag}/{zipName}";
+        string shaUrl = $"{AppInfo.RepositoryUrl}/releases/download/{latestTag}/{zipName}.sha256";
+
+        return new UpdateCheckResult(
+            HasUpdate: hasUpdate,
+            CurrentVersion: AppInfo.Version,
+            LatestVersion: cleanVersion,
+            ReleaseNotes: null,
+            ReleaseUrl: finalUri.AbsoluteUri,
+            ZipDownloadUrl: zipUrl,
+            ZipSize: 58_000_000,
+            Sha256DownloadUrl: shaUrl
         );
     }
 
