@@ -45,8 +45,15 @@ internal sealed class HostWindow : IDisposable
             hInstance = _instance,
             lpszClassName = ClassName,
         };
-        if (NativeMethods.RegisterClassExW(ref wc) == 0) throw new Win32Exception(Marshal.GetLastWin32Error());
-        _classRegistered = true;
+        if (NativeMethods.RegisterClassExW(ref wc) == 0)
+        {
+            int err = Marshal.GetLastWin32Error();
+            if (err != 1410) throw new Win32Exception(err); // 1410 = ERROR_CLASS_ALREADY_EXISTS
+        }
+        else
+        {
+            _classRegistered = true;
+        }
 
         _hwnd = NativeMethods.CreateWindowExW((uint)NativeMethods.WS_EX_TOOLWINDOW, ClassName, AppInfo.Name + " Host", NativeMethods.WS_POPUP,
             0, 0, 0, 0, IntPtr.Zero, IntPtr.Zero, _instance, IntPtr.Zero);

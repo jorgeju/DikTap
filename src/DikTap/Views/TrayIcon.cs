@@ -21,6 +21,8 @@ internal sealed class TrayIcon : IDisposable
     private readonly Action _open;
     private readonly Action? _singleClick;
     private CancellationTokenSource? _clickCts;
+    private bool _doubleClickOccurred;
+    private long _lastDoubleClickTick;
     private IntPtr _icon;
     private bool _added;
     private string _tooltip = AppInfo.Name;
@@ -168,6 +170,7 @@ internal sealed class TrayIcon : IDisposable
             case NativeMethods.WM_CONTEXTMENU:
                 _clickCts?.Cancel();
                 _clickCts = null;
+                _doubleClickOccurred = false;
                 ShowMenu();
                 break;
         }
@@ -175,13 +178,20 @@ internal sealed class TrayIcon : IDisposable
 
     private async void HandleLeftClick()
     {
+        uint dblTime = NativeMethods.GetDoubleClickTime();
+        if (dblTime == 0) dblTime = 500;
+
+        // In Windows, a double-click sends: WM_LBUTTONUP, WM_LBUTTONDBLCLK, and then a second WM_LBUTTONUP.
+        // Ignore the second mouse-up so the double-click does not trigger a subsequent single-click action.
+        bool wasDoubleClick = _doubleClickOccurred && (Environment.TickCount64 - _lastDoubleClickTick < Math.Max(dblTime * 2, 1000));
+        _doubleClickOccurred = false;
+        if (wasDoubleClick) return;
+
         if (_singleClick is null) return;
         _clickCts?.Cancel();
         var cts = _clickCts = new CancellationTokenSource();
         try
         {
-            uint dblTime = NativeMethods.GetDoubleClickTime();
-            if (dblTime == 0) dblTime = 500;
             await Task.Delay((int)dblTime, cts.Token).ConfigureAwait(true);
             if (!cts.IsCancellationRequested)
             {
@@ -193,6 +203,8 @@ internal sealed class TrayIcon : IDisposable
 
     private void HandleDoubleClick()
     {
+        _doubleClickOccurred = true;
+        _lastDoubleClickTick = Environment.TickCount64;
         _clickCts?.Cancel();
         _clickCts = null;
         _open();
