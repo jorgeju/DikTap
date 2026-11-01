@@ -386,3 +386,52 @@ public class DestinationServiceTests
         Assert.Equal(DestinationStatus.Valid, service.Validate(snapshot));
     }
 }
+
+public class TrayIconTests
+{
+    [Fact]
+    public async Task Double_click_triggers_open_and_does_not_trigger_single_click()
+    {
+        using var host = new HostWindow();
+        int openCount = 0;
+        int singleClickCount = 0;
+        using var tray = new DikTap.Views.TrayIcon(host, () => Array.Empty<DikTap.Views.TrayMenuItem>(), () => openCount++, () => singleClickCount++);
+
+        var onTrayMessage = typeof(DikTap.Views.TrayIcon).GetMethod("OnTrayMessage", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+
+        // Windows double-click mouse message sequence:
+        // 1. First click release: WM_LBUTTONUP
+        onTrayMessage.Invoke(tray, new object[] { NativeMethods.WM_LBUTTONUP });
+        // 2. Second click press: WM_LBUTTONDBLCLK
+        onTrayMessage.Invoke(tray, new object[] { NativeMethods.WM_LBUTTONDBLCLK });
+        // 3. Second click release: WM_LBUTTONUP
+        onTrayMessage.Invoke(tray, new object[] { NativeMethods.WM_LBUTTONUP });
+
+        // Wait longer than GetDoubleClickTime (default <= 500ms)
+        await Task.Delay(650);
+
+        Assert.Equal(1, openCount);
+        Assert.Equal(0, singleClickCount);
+    }
+
+    [Fact]
+    public async Task Single_click_triggers_after_double_click_time_when_no_second_click_arrives()
+    {
+        using var host = new HostWindow();
+        int openCount = 0;
+        int singleClickCount = 0;
+        using var tray = new DikTap.Views.TrayIcon(host, () => Array.Empty<DikTap.Views.TrayMenuItem>(), () => openCount++, () => singleClickCount++);
+
+        var onTrayMessage = typeof(DikTap.Views.TrayIcon).GetMethod("OnTrayMessage", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+
+        // Single click release
+        onTrayMessage.Invoke(tray, new object[] { NativeMethods.WM_LBUTTONUP });
+
+        Assert.Equal(0, singleClickCount);
+
+        await Task.Delay(650);
+
+        Assert.Equal(0, openCount);
+        Assert.Equal(1, singleClickCount);
+    }
+}
