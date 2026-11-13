@@ -70,16 +70,28 @@ internal sealed class Win32DestinationService : IDestinationService
         IntPtr focus = GetFocus(tid);
         if (s.FocusWindow != IntPtr.Zero && focus != IntPtr.Zero && focus != s.FocusWindow) return DestinationStatus.FocusChanged;
 
-        if (s.FocusRuntimeId is { Length: > 0 } expected && !FocusRuntimeIdStillMatches(expected))
+        if (s.FocusRuntimeId is { Length: > 0 } expected && !FocusRuntimeIdStillMatches(expected, s.ProcessId))
             return DestinationStatus.FocusChanged;
 
         return DestinationStatus.Valid;
     }
 
+    // UIA runtime ids of window-based providers are {42, hwnd, ...}. Chromium/Electron (VS Code) can expose the same field
+    // through the top-level window at one moment and through its Chrome_RenderWidgetHostHWND at another, so the ids differ
+    // in the hwnd and in the tail without the field having changed. Those ids are not comparable with each other.
+    private static bool SameProcessDifferentProvider(int[] expected, int[] current, uint processId)
+    {
+        if (expected.Length < 2 || current.Length < 2 || expected[0] != current[0] || expected[1] == current[1]) return false;
+        IntPtr other = new(current[1]);
+        if (!NativeMethods.IsWindow(other)) return false;
+        NativeMethods.GetWindowThreadProcessId(other, out uint pid);
+        return pid == processId;
+    }
+
     // UI Automation can fail transiently (target app busy, call timed out) or report an intermediate element while
     // focus settles. A single bad read must not discard the dictation: it only counts as a change if every read
     // returns a different element. If UIA never answers, the Win32 focus check above is all we have.
-    private bool FocusRuntimeIdStillMatches(int[] expected)
+    private bool FocusRuntimeIdStillMatches(int[] expected, uint processId)
     {
         int[]? lastSeen = null;
         for (int attempt = 0; attempt < ValidateAttempts; attempt++)
@@ -88,6 +100,11 @@ internal sealed class Win32DestinationService : IDestinationService
             int[]? current = _getFocusedRuntimeId(ValidateTimeoutMs);
             if (current is null) continue;
             if (expected.SequenceEqual(current)) return true;
+            if (SameProcessDifferentProvider(expected, current, processId))
+            {
+                Logger.Info($"Focus validation: ids come from different UIA providers of the same app ({string.Join('.', expected)} -> {string.Join('.', current)}); not comparable, relying on Win32 focus");
+                return true;
+            }
             lastSeen = current;
         }
 
