@@ -391,6 +391,24 @@ public class DestinationServiceTests
     }
 
     [Fact]
+    public void Validate_does_not_compare_ids_from_different_uia_providers_of_the_same_app()
+    {
+        IntPtr hwnd = NativeMethods.GetForegroundWindow();
+        if (hwnd == IntPtr.Zero) return;
+        uint tid = NativeMethods.GetWindowThreadProcessId(hwnd, out uint pid);
+        if (pid == 0) return;
+
+        // Same app, but the id now hangs from another window of the process (as VS Code does): not comparable, not a change.
+        var snapshot = new DestinationSnapshot(hwnd, pid, tid, IntPtr.Zero, new[] { 42, 100, 4, 0, 0, 23 });
+        var otherProvider = new Win32DestinationService(_ => new[] { 42, (int)hwnd, 4, 4, 1, 16 }, TimeSpan.Zero);
+        Assert.Equal(DestinationStatus.Valid, otherProvider.Validate(snapshot));
+
+        // An id under a window that is not the app's (here, one that does not exist) is still a real change.
+        var foreign = new Win32DestinationService(_ => new[] { 42, 101, 4, 4, 1, 16 }, TimeSpan.Zero);
+        Assert.Equal(DestinationStatus.FocusChanged, foreign.Validate(snapshot));
+    }
+
+    [Fact]
     public void Validate_falls_back_to_win32_focus_when_runtime_id_is_null()
     {
         IntPtr hwnd = NativeMethods.GetForegroundWindow();
