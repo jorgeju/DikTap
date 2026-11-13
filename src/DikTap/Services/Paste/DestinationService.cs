@@ -32,11 +32,18 @@ internal sealed class Win32DestinationService : IDestinationService
     private static IUIAutomation? _uia;
     private static bool _uiaInitFailed;
 
-    private readonly Func<int[]?> _getFocusedRuntimeId;
+    private const int CaptureTimeoutMs = 150;
+    private const int ValidateTimeoutMs = 400;
+    private const int ValidateAttempts = 3;
 
-    public Win32DestinationService(Func<int[]?>? getFocusedRuntimeId = null)
+    // Receives the maximum time to wait for UI Automation, in milliseconds.
+    private readonly Func<int, int[]?> _getFocusedRuntimeId;
+    private readonly TimeSpan _retryDelay;
+
+    public Win32DestinationService(Func<int, int[]?>? getFocusedRuntimeId = null, TimeSpan? retryDelay = null)
     {
         _getFocusedRuntimeId = getFocusedRuntimeId ?? DefaultGetFocusedRuntimeId;
+        _retryDelay = retryDelay ?? TimeSpan.FromMilliseconds(100);
     }
 
     public void WarmUp() => EnsureUia();
@@ -47,7 +54,8 @@ internal sealed class Win32DestinationService : IDestinationService
         if (hwnd == IntPtr.Zero) return null;
         uint tid = NativeMethods.GetWindowThreadProcessId(hwnd, out uint pid);
         if (pid == 0) return null;
-        int[]? runtimeId = _getFocusedRuntimeId();
+        int[]? runtimeId = _getFocusedRuntimeId(CaptureTimeoutMs);
+        if (runtimeId is null) Logger.Info("Focus capture: UI Automation did not answer; focus will only be checked at window level");
         return new DestinationSnapshot(hwnd, pid, tid, GetFocus(tid), runtimeId);
     }
 
@@ -62,14 +70,34 @@ internal sealed class Win32DestinationService : IDestinationService
         IntPtr focus = GetFocus(tid);
         if (s.FocusWindow != IntPtr.Zero && focus != IntPtr.Zero && focus != s.FocusWindow) return DestinationStatus.FocusChanged;
 
-        if (s.FocusRuntimeId is { Length: > 0 })
-        {
-            int[]? current = _getFocusedRuntimeId();
-            if (current is null || !s.FocusRuntimeId.SequenceEqual(current))
-                return DestinationStatus.FocusChanged;
-        }
+        if (s.FocusRuntimeId is { Length: > 0 } expected && !FocusRuntimeIdStillMatches(expected))
+            return DestinationStatus.FocusChanged;
 
         return DestinationStatus.Valid;
+    }
+
+    // UI Automation can fail transiently (target app busy, call timed out) or report an intermediate element while
+    // focus settles. A single bad read must not discard the dictation: it only counts as a change if every read
+    // returns a different element. If UIA never answers, the Win32 focus check above is all we have.
+    private bool FocusRuntimeIdStillMatches(int[] expected)
+    {
+        int[]? lastSeen = null;
+        for (int attempt = 0; attempt < ValidateAttempts; attempt++)
+        {
+            if (attempt > 0 && _retryDelay > TimeSpan.Zero) Thread.Sleep(_retryDelay);
+            int[]? current = _getFocusedRuntimeId(ValidateTimeoutMs);
+            if (current is null) continue;
+            if (expected.SequenceEqual(current)) return true;
+            lastSeen = current;
+        }
+
+        if (lastSeen is null)
+        {
+            Logger.Info("Focus validation: UI Automation did not answer; relying on Win32 focus");
+            return true;
+        }
+        Logger.Info($"Focus validation: runtime id changed ({string.Join('.', expected)} -> {string.Join('.', lastSeen)})");
+        return false;
     }
 
     private static IntPtr GetFocus(uint threadId)
@@ -96,7 +124,7 @@ internal sealed class Win32DestinationService : IDestinationService
         return _uia;
     }
 
-    private static int[]? DefaultGetFocusedRuntimeId()
+    private static int[]? DefaultGetFocusedRuntimeId(int timeoutMs)
     {
         var uia = EnsureUia();
         if (uia is null) return null;
@@ -115,7 +143,7 @@ internal sealed class Win32DestinationService : IDestinationService
                     Marshal.Release(el);
                 }
             });
-            return task.Wait(150) ? task.Result : null;
+            return task.Wait(timeoutMs) ? task.Result : null;
         }
         catch
         {

@@ -363,14 +363,31 @@ public class DestinationServiceTests
 
         var snapshot = new DestinationSnapshot(hwnd, pid, tid, IntPtr.Zero, new[] { 42, 100, 1 });
 
-        var sameService = new Win32DestinationService(() => new[] { 42, 100, 1 });
+        var sameService = new Win32DestinationService(_ => new[] { 42, 100, 1 }, TimeSpan.Zero);
         Assert.Equal(DestinationStatus.Valid, sameService.Validate(snapshot));
 
-        var changedService = new Win32DestinationService(() => new[] { 42, 100, 2 });
+        var changedService = new Win32DestinationService(_ => new[] { 42, 100, 2 }, TimeSpan.Zero);
         Assert.Equal(DestinationStatus.FocusChanged, changedService.Validate(snapshot));
+    }
 
-        var nullService = new Win32DestinationService(() => null);
-        Assert.Equal(DestinationStatus.FocusChanged, nullService.Validate(snapshot));
+    [Fact]
+    public void Validate_tolerates_transient_uia_failures_and_unsettled_focus()
+    {
+        IntPtr hwnd = NativeMethods.GetForegroundWindow();
+        if (hwnd == IntPtr.Zero) return;
+        uint tid = NativeMethods.GetWindowThreadProcessId(hwnd, out uint pid);
+        if (pid == 0) return;
+
+        var snapshot = new DestinationSnapshot(hwnd, pid, tid, IntPtr.Zero, new[] { 42, 100, 1 });
+
+        // UI Automation does not answer: only Win32 focus can be checked, so the dictation is not discarded.
+        var unavailable = new Win32DestinationService(_ => null, TimeSpan.Zero);
+        Assert.Equal(DestinationStatus.Valid, unavailable.Validate(snapshot));
+
+        // First read fails, second sees an intermediate element, third sees the original one.
+        var reads = new Queue<int[]?>(new int[]?[] { null, new[] { 42, 100, 9 }, new[] { 42, 100, 1 } });
+        var settling = new Win32DestinationService(_ => reads.Dequeue(), TimeSpan.Zero);
+        Assert.Equal(DestinationStatus.Valid, settling.Validate(snapshot));
     }
 
     [Fact]
@@ -382,7 +399,7 @@ public class DestinationServiceTests
         if (pid == 0) return;
 
         var snapshot = new DestinationSnapshot(hwnd, pid, tid, IntPtr.Zero, FocusRuntimeId: null);
-        var service = new Win32DestinationService(() => new[] { 42, 999 });
+        var service = new Win32DestinationService(_ => new[] { 42, 999 }, TimeSpan.Zero);
         Assert.Equal(DestinationStatus.Valid, service.Validate(snapshot));
     }
 }
