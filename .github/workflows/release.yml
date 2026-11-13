@@ -56,3 +56,20 @@ jobs:
           $flags = @()
           if ($env:VERSION -match '-') { $flags += '--prerelease' }
           gh release create $env:GITHUB_REF_NAME $zip "$zip.sha256" --title "DikTap $env:VERSION" --notes $notes --generate-notes @flags
+
+  # Opens the "New version" PR in microsoft/winget-pkgs. Disabled until the package exists there and the secret is set:
+  # repo variable WINGET_PUBLISH=true and secret WINGET_TOKEN (classic PAT, public_repo scope, owner of the fork).
+  winget:
+    needs: release
+    if: ${{ vars.WINGET_PUBLISH == 'true' && !contains(github.ref_name, '-') }}
+    runs-on: windows-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - name: Open the PR in winget-pkgs
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.WINGET_TOKEN }}
+        run: ./scripts/Submit-Winget.ps1 -Version ('${{ github.ref_name }}'.TrimStart('v'))
